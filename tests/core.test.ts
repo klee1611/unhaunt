@@ -148,7 +148,7 @@ describe('matchBreaches', () => {
   });
 });
 
-import { isPrivateAddress, looksPublicHostname, safeHttpUrl } from '../src/lib/safe-url';
+import { isPrivateAddress, looksPublicHostname, publicFetch, safeHttpUrl, trustedLink } from '../src/lib/safe-url';
 
 describe('fetch and link safety', () => {
   it('drops forged From hosts that are IPs or local names', () => {
@@ -168,6 +168,23 @@ describe('fetch and link safety', () => {
       expect(isPrivateAddress(ip)).toBe(true);
     }
     expect(isPrivateAddress('93.184.216.34')).toBe(false);
+  });
+  it('flags IPv6 forms that hide IPv4 and other special ranges', () => {
+    for (const ip of ['2002:7f00:1::1', '64:ff9b::7f00:1', '2001::1', '::', '0.0.0.0', '255.255.255.255', 'ff02::1', 'not-an-ip']) {
+      expect(isPrivateAddress(ip)).toBe(true);
+    }
+    expect(isPrivateAddress('2606:4700:4700::1111')).toBe(false);
+  });
+  it('keeps model links only on the service domain or present in the page', () => {
+    const page = 'Delete your account at https://help.acme.com/delete or contact us.';
+    expect(trustedLink('https://acme.com/settings/delete', 'acme.com', page)).toBe('https://acme.com/settings/delete');
+    expect(trustedLink('https://evil.example/acme-delete', 'acme.com', page)).toBeNull();
+    expect(trustedLink('https://help.acme.com/delete', 'other.com', page)).toBe('https://help.acme.com/delete');
+    expect(trustedLink('javascript:alert(1)', 'acme.com', page)).toBeNull();
+  });
+  it('refuses at connect time a public-looking name that resolves to loopback', async () => {
+    // localtest.me is a real public DNS name pointing at 127.0.0.1 (what a rebinding attack relies on).
+    await expect(publicFetch('http://localtest.me:11434/api/tags')).rejects.toThrow();
   });
   it('keeps only http(s) URLs from model output', () => {
     expect(safeHttpUrl('https://acme.com/settings/delete')).toBe('https://acme.com/settings/delete');

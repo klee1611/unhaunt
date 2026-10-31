@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { readJson, writeJson } from './ledger';
 import { jsonCall } from './model';
 import { emailInQuote, quoteIsOnPage } from './quote';
-import { looksPublicHostname, safeHttpUrl, isPublicHost } from './safe-url';
+import { looksPublicHostname, publicFetch, safeHttpUrl, trustedLink } from './safe-url';
 import type { Route } from './store';
 
 // Only public pages and the service's domain go to Ultramarine. Nothing from the inbox.
@@ -36,8 +36,9 @@ async function getHtml(url: string): Promise<{ status: number; url: string; html
   try {
     for (let hop = 0; hop < 5; hop++) {
       const safe = safeHttpUrl(current);
-      if (!safe || !(await isPublicHost(new URL(safe).hostname))) return { status: 0, url: current, html: null };
-      const res = await fetch(safe, { redirect: 'manual', signal: AbortSignal.timeout(10000), headers: { 'user-agent': UA } });
+      if (!safe) return { status: 0, url: current, html: null };
+      // publicFetch checks the resolved address at connect time, on every hop.
+      const res = await publicFetch(safe, { redirect: 'manual', signal: AbortSignal.timeout(10000), headers: { 'user-agent': UA } });
       const location = res.headers.get('location');
       if (res.status >= 300 && res.status < 400 && location) {
         current = new URL(location, safe).toString();
@@ -56,16 +57,16 @@ async function getHtml(url: string): Promise<{ status: number; url: string; html
 async function fromWayback(target: string): Promise<Page | null> {
   try {
     // archive.org rate-limits bursts (429): back off and retry a couple of times.
-    let res: Response | null = null;
+    let res: Awaited<ReturnType<typeof publicFetch>> | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(target)}`, {
+      res = await publicFetch(`https://archive.org/wayback/available?url=${encodeURIComponent(target)}`, {
         signal: AbortSignal.timeout(10000),
       });
       if (res.status !== 429) break;
       await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
     }
     if (!res?.ok) return null;
-    const snap = (await res.json())?.archived_snapshots?.closest;
+    const snap = ((await res.json()) as any)?.archived_snapshots?.closest;
     if (!snap?.available || !snap.timestamp) return null;
     // "id_" asks for the original page without the archive toolbar.
     const raw = await getHtml(`https://web.archive.org/web/${snap.timestamp}id_/${target}`);
@@ -151,7 +152,7 @@ If the pages don't say how to delete an account, answer "unknown". Never guess a
 const userPrompt = (service: string, domain: string, text: string) =>
   `Service: ${service} (${domain})\n\n${text}`;
 
-function toRoute(a: RouteAnswer | null, pages: Page[], costUsd: number): Route {
+function toRoute(a: RouteAnswer | null, pages: Page[], costUsd: number, domain: string): Route {
   if (!a) {
     return { method: 'unknown', contact: null, url: null, quote: null, quoteVerified: false, sourceUrl: null, confidence: 0, costUsd };
   }
@@ -163,10 +164,11 @@ function toRoute(a: RouteAnswer | null, pages: Page[], costUsd: number): Route {
   return {
     method: a.method,
     contact,
-    url: safeHttpUrl(a.url),
+    // Links must trace back to the service or to the fetched page; the source must be a page we fetched.
+    url: trustedLink(a.url, domain, allText),
     quote: a.quote,
     quoteVerified,
-    sourceUrl: safeHttpUrl(a.source_url),
+    sourceUrl: pages.find((p) => p.url === a.source_url)?.url ?? null,
     confidence: a.confidence,
     costUsd,
   };
@@ -187,7 +189,7 @@ export async function ultramarineRoute(service: string, domain: string, pages: P
   const key = createHash('sha256').update(`ultramarine\n${domain}\n${text}`).digest('hex').slice(0, 24);
   const cacheFile = `cache/ultramarine/${key}.json`;
   const hit = readJson<{ answer: RouteAnswer | null; usage: Record<string, number>; requestId: string | null; raw: string } | null>(cacheFile, null);
-  if (hit) return { route: toRoute(hit.answer, pages, 0), ...hit, cached: true };
+  if (hit) return { route: toRoute(hit.answer, pages, 0, domain), ...hit, cached: true };
 
   const { data, response } = await ultramarine.chat.completions
     .create({
@@ -218,13 +220,13 @@ export async function ultramarineRoute(service: string, domain: string, pages: P
     ((usage.inputTokens - cached) * RATES.input + cached * RATES.cachedInput + usage.outputTokens * RATES.output) / 1e6;
   const record = { answer, usage: { ...usage, costUsd }, requestId: response.headers.get('x-request-id'), raw };
   writeJson(cacheFile, record);
-  return { route: toRoute(answer, pages, costUsd), ...record, cached: false };
+  return { route: toRoute(answer, pages, costUsd, domain), ...record, cached: false };
 }
 
 // Baseline: the local open model on exactly the same excerpt.
 export async function localRoute(service: string, domain: string, pages: Page[]) {
   const call = await jsonCall(RouteAnswer, SYSTEM, userPrompt(service, domain, excerpt(pages)));
-  return { route: toRoute(call.value, pages, 0), call };
+  return { route: toRoute(call.value, pages, 0, domain), call };
 }
 
 // Receipt: the account's usage counters, read before and after a run.

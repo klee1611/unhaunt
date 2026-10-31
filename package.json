@@ -26,11 +26,13 @@
     "ai": "^6.0.0",
     "gaxios": "^7.1.2",
     "googleapis": "161",
+    "ipaddr.js": "^2.5.0",
     "next": "15.5.24",
     "openai": "^5.23.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "tldts": "^7.0.0",
+    "undici": "^7.30.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
