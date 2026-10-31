@@ -4,11 +4,13 @@ import { loadAll, type Route } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
-type Truth = { method: string; contact: string | null; url: string | null };
+type Truth = { method: string; contact: string | null; url: string | null; alternatives?: { method: string; contact?: string | null }[]; excluded?: string };
 
 function Answer({ r, truth }: { r?: Route; truth: Truth }) {
   if (!r) return <span className="muted">not run</span>;
-  const right = r.method === truth.method && (truth.method !== 'email' || (r.contact ?? '') === (truth.contact ?? ''));
+  const ok = (t: { method: string; contact?: string | null }) =>
+    r.method === t.method && (t.method !== 'email' || (r.contact ?? '').toLowerCase() === (t.contact ?? '').toLowerCase());
+  const right = [truth, ...(truth.alternatives ?? [])].some(ok);
   return (
     <span>
       <span className={`chip ${right ? 'ok' : 'bad'}`}>{right ? 'right' : 'wrong'}</span> {r.method}
