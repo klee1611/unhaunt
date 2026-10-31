@@ -123,8 +123,9 @@ describe('approval state machine (fail closed)', () => {
   });
   it('allows exactly one send after approval', () => {
     const q = transition(transition(p, 'pending_phone'), 'approved');
-    expect(canSend(q, new Set())).toEqual({ ok: true });
-    expect(canSend(q, new Set(['svc-001']))).toMatchObject({ ok: false, reason: 'already sent' });
+    expect(canSend(q, new Set(), 'acme.com')).toEqual({ ok: true });
+    expect(canSend(q, new Set(['svc-001']), 'acme.com')).toMatchObject({ ok: false, reason: 'already sent' });
+    expect(canSend(q, new Set(), 'other.com')).toMatchObject({ ok: false });
   });
   it('a crash after approval needs a new approval', () => {
     const q = transition(transition(transition(p, 'pending_phone'), 'approved'), 'approved_not_sent');
@@ -221,5 +222,28 @@ describe('request guards', () => {
     expect(recipientMatchesService('privacy@acme.com', 'acme.com')).toBe(true);
     expect(recipientMatchesService('dpo@eu.acme.com', 'acme.com')).toBe(true);
     expect(recipientMatchesService('acme@privacy-vendor.com', 'acme.com')).toBe(false);
+  });
+});
+
+import { parseAddress } from '../src/lib/request-guard';
+
+describe('one strict recipient parser', () => {
+  it.each([
+    'privacy@acme.com@evil.com',
+    'attacker,privacy@acme.com',
+    'Acme <privacy@acme.com>',
+    'privacy@acme.com, evil@evil.com',
+    'privacy@acme.com\r\nBcc: evil@evil.com',
+    'privacy@acme',
+    '',
+  ])('rejects %j everywhere', (to) => {
+    expect(parseAddress(to)).toBeNull();
+    expect(recipientMatchesService(to, 'acme.com')).toBe(false);
+    expect(bindingMessage('svc-001', to)).toContain('INVALID recipient');
+    const p = { id: 'svc-001', to, toSource: 'user' as const, subject: 's', body: 'b', status: 'approved' as const };
+    expect(canSend(p, new Set(), 'acme.com')).toMatchObject({ ok: false });
+  });
+  it('accepts one plain address and normalises case', () => {
+    expect(parseAddress(' Privacy@Acme.com ')).toEqual({ address: 'privacy@acme.com', domain: 'acme.com' });
   });
 });

@@ -16,6 +16,7 @@ your browser (other `localhost` ports count as the same site).
 | S2 | Model-supplied links (`javascript:` or phishing) rendered as links | Medium | **Fixed**: http(s) only, and only on the service's domain or present in the fetched page |
 | S3 | CSRF on `POST /api/*` from other localhost origins | Medium | **Fixed**: `Origin` must equal `APP_BASE_URL` |
 | S4 | Phone approval didn't show where the email goes; drafts to any quoted address | Medium | **Fixed**: phone shows `#NNN to <domain>`; auto-drafts only to addresses on the service's own domain |
+| S4b | Recipient parsed differently by the phone message, domain check and send (e.g. `a@acme.com@evil.com`) | Medium | **Fixed**: one strict single-address parser for all three; the service-domain check is repeated right before sending; only the parsed address is passed to Gmail |
 | S5 | Routes trusted middleware alone for auth | Low–Med | **Fixed**: routes check the session too |
 | S6 | Unvalidated `/api/send/[id]` (`__proto__`) | Low | **Fixed**: `svc-NNN` pattern + own-property check |
 | S7 | Any user of the Auth0 tenant could use the app | Low | **Fixed (opt-in)**: `ALLOWED_EMAILS`; also disable sign-ups in Auth0 |
@@ -40,5 +41,5 @@ a quote verified on the page; secrets only in gitignored `.env.local`.
 - CIBA request expiry stays at 120 s (push channel only).
 
 ## Verification
-`npm test` (41 tests, incl. SSRF, CSRF, link provenance, binding message, approval states),
+`npm test` (49 tests, incl. crafted recipients, incl. SSRF, CSRF, link provenance, binding message, approval states),
 `npm audit --omit=dev` (no critical), `next build` passes.

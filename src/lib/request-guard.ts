@@ -21,16 +21,26 @@ export function isAllowedUser(email: string | undefined, allowed = process.env.A
 
 export const SERVICE_ID = /^svc-\d{3}$/;
 
+// One strict parser for every place that reads a recipient (phone message, domain check, send),
+// so they can't disagree. Exactly one plain address: no display names, commas, brackets or second '@'.
+const ADDRESS = /^([a-z0-9._%+-]+)@([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i;
+
+export function parseAddress(value: string | null | undefined): { address: string; domain: string } | null {
+  const m = (value ?? '').trim().match(ADDRESS);
+  if (!m || m[2].length > 253) return null;
+  return { address: m[0].toLowerCase(), domain: m[2].toLowerCase() };
+}
+
 // The phone shows this, so it names the recipient's domain. Auth0 allows 64 chars of [a-zA-Z0-9 +-_.,:#].
 export function bindingMessage(id: string, to: string | undefined): string {
   const num = id.replace('svc-', '');
-  const domain = (to?.split('@')[1] ?? 'unknown').toLowerCase().replace(/[^a-z0-9.-]/g, '');
-  const msg = `Unhaunt: deletion request #${num} to ${domain}`;
+  const parsed = parseAddress(to);
+  const msg = `Unhaunt: deletion request #${num} to ${parsed ? parsed.domain : 'INVALID recipient'}`;
   return msg.length <= 64 ? msg : `${msg.slice(0, 61)}...`;
 }
 
 // A recipient is drafted automatically only if it belongs to the service itself.
 export function recipientMatchesService(email: string, serviceDomain: string): boolean {
-  const host = email.split('@')[1];
-  return !!host && getDomain(host) === serviceDomain;
+  const parsed = parseAddress(email);
+  return !!parsed && getDomain(parsed.domain) === serviceDomain;
 }

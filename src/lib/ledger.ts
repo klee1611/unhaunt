@@ -1,6 +1,8 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
+import { parseAddress, recipientMatchesService } from './request-guard';
+
 export const DATA_DIR = process.env.GHOST_DATA_DIR ?? join(process.cwd(), 'data');
 
 export function dataPath(...parts: string[]) {
@@ -73,12 +75,21 @@ export function transition(p: Proposal, next: ProposalStatus): Proposal {
   return { ...p, status: next };
 }
 
-// The last guard before Gmail: approved, a confirmed recipient, and never sent before.
-export function canSend(p: Proposal, sentIds: Set<string>): { ok: true } | { ok: false; reason: string } {
+// The last guard before Gmail: approved, one plain recipient that still belongs to the service
+// (or that you typed yourself), and never sent before.
+export function canSend(
+  p: Proposal,
+  sentIds: Set<string>,
+  serviceDomain?: string,
+): { ok: true } | { ok: false; reason: string } {
   if (p.status !== 'approved') return { ok: false, reason: `status is ${p.status}, not approved` };
   if (sentIds.has(p.id)) return { ok: false, reason: 'already sent' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.to)) return { ok: false, reason: 'recipient is not an email address' };
-  if (p.toSource !== 'verified_quote' && p.toSource !== 'user') {
+  if (!parseAddress(p.to)) return { ok: false, reason: 'recipient is not exactly one plain email address' };
+  if (p.toSource === 'verified_quote') {
+    if (!serviceDomain || !recipientMatchesService(p.to, serviceDomain)) {
+      return { ok: false, reason: 'quoted recipient is not on the service domain' };
+    }
+  } else if (p.toSource !== 'user') {
     return { ok: false, reason: 'recipient not confirmed by a verified quote or by the user' };
   }
   return { ok: true };

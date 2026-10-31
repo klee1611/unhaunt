@@ -5,6 +5,7 @@ import { getAccessToken, withGmail, withPhoneApproval } from './auth0-ai';
 import { groupCandidates, SIGNUP_QUERY, type Candidate } from './census';
 import { getMeta, gmailClient, latestFrom, listMessageIds, mapLimit, sendMail } from './gmail';
 import { canSend, logEvent, readJson, sentIds, transition, writeJson, type Proposal } from './ledger';
+import { parseAddress } from './request-guard';
 
 // Census: Token Vault hands over a Gmail token; only headers are read; everything stays in data/.
 export const readInboxTool = withGmail(
@@ -62,7 +63,8 @@ export const sendDeletionRequestTool = withPhoneApproval(
         p = transition(p, 'approved');
         logEvent({ type: 'phone_outcome', id, outcome: 'approved' });
 
-        const check = canSend(p, sentIds());
+        const domain = readJson<Candidate[]>('candidates.json', []).find((c) => c.id === id)?.domain;
+        const check = canSend(p, sentIds(), domain);
         if (!check.ok) {
           proposals[id] = transition(p, 'approved_not_sent');
           writeJson('proposals.json', proposals);
@@ -72,7 +74,8 @@ export const sendDeletionRequestTool = withPhoneApproval(
 
         try {
           const gmail = gmailClient(await getAccessToken());
-          const { gmailId } = await sendMail(gmail, p.to, p.subject, p.body);
+          // Send to the parsed address only, never the raw string.
+          const { gmailId } = await sendMail(gmail, parseAddress(p.to)!.address, p.subject, p.body);
           proposals[id] = transition(p, 'sent');
           logEvent({ type: 'sent', id, gmailId });
           return { sent: true, outcome: 'approved', gmailId };
