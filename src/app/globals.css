@@ -1,0 +1,48 @@
+:root {
+  --bg: #fbf8f3;
+  --fg: #1d1a16;
+  --muted: #6b645b;
+  --line: #e4ddd2;
+  --accent: #c2410c; /* marigold */
+  --ok: #15803d;
+  --bad: #b91c1c;
+  --chip: #f1ebe1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15130f;
+    --fg: #ece6dc;
+    --muted: #a39b8f;
+    --line: #2e2a24;
+    --accent: #fb923c;
+    --ok: #4ade80;
+    --bad: #f87171;
+    --chip: #24201a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+header nav a { margin-left: 16px; color: var(--muted); text-decoration: none; }
+.brand { font-weight: 700; color: var(--fg); text-decoration: none; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 24px; margin: 8px 0 4px; }
+.muted { color: var(--muted); }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; min-width: 120px; }
+.stat b { display: block; font-size: 22px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--chip); font-size: 12px; }
+.chip.ghost { color: var(--accent); }
+.chip.bad { color: var(--bad); }
+.chip.ok { color: var(--ok); }
+button { font: inherit; border: 1px solid var(--line); background: var(--chip); color: var(--fg); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+button.on { border-color: var(--accent); color: var(--accent); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); padding: 8px 16px; }
+button:disabled { opacity: 0.5; cursor: default; }
+blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--chip); }
+pre { white-space: pre-wrap; background: var(--chip); padding: 12px; border-radius: 6px; }
+a { color: var(--accent); }
