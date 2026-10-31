@@ -213,3 +213,29 @@ export function RouteTruthForm({ id, saved }: { id: string; saved?: { method: st
     </span>
   );
 }
+
+// Draft a request to an address you type (for routes the guard didn't auto-draft).
+export function DraftToAddress({ id }: { id: string }) {
+  const [to, setTo] = useState('');
+  const [state, setState] = useState('');
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input placeholder="privacy@company.com" value={to} onChange={(e) => setTo(e.target.value)} />
+      <button
+        onClick={async () => {
+          const res = await fetch(`/api/proposals/${id}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ to }),
+          });
+          const b = await res.json();
+          if (b.ok) window.location.reload();
+          else setState(`Error: ${b.error}`);
+        }}
+      >
+        Draft request to this address
+      </button>
+      <span className="muted">{state}</span>
+    </span>
+  );
+}

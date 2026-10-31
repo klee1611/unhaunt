@@ -2,6 +2,7 @@ import './env';
 
 import type { Candidate } from '../src/lib/census';
 import { logEvent, readJson, writeJson, type Proposal } from '../src/lib/ledger';
+import { draftProposal } from '../src/lib/proposal';
 import { recipientMatchesService } from '../src/lib/request-guard';
 import type { Label, Route } from '../src/lib/store';
 import { fetchPolicyPages, localRoute, readUsage, ultramarineRoute } from '../src/lib/ultramarine';
@@ -52,22 +53,7 @@ for (const id of ids) {
     logEvent({ type: 'recipient_needs_review', id });
   }
   if (labels[id]?.user === 'ghost' && um.route.method === 'email' && contact && recipientMatchesService(contact, c.domain) && !proposals[id]) {
-    proposals[id] = {
-      id,
-      to: contact,
-      toSource: 'verified_quote',
-      subject: `Account and personal data deletion request`,
-      body: [
-        'Hello,',
-        '',
-        `Please delete my ${c.displayName} account associated with this email address, and the personal information you hold about me, as provided under applicable privacy law (including Canada's PIPEDA).`,
-        '',
-        'Please confirm by email once the deletion is complete.',
-        '',
-        'Thank you.',
-      ].join('\n'),
-      status: 'drafted',
-    };
+    proposals[id] = draftProposal(id, c.displayName, contact, 'verified_quote');
     logEvent({ type: 'drafted', id });
   }
   writeJson('routes.json', routes);

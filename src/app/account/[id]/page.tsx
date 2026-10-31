@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { AskPhoneButton, ReauthSend } from '@/components/actions';
+import { AskPhoneButton, DraftToAddress, ReauthSend } from '@/components/actions';
 import { readLedger } from '@/lib/ledger';
 import { APPROVAL_MODE } from '@/lib/reauth';
 import { safeHttpUrl } from '@/lib/safe-url';
@@ -55,7 +55,16 @@ export default async function Account({
       )}
 
       <h2>Deletion request</h2>
-      {!proposal ? <p className="muted">No request drafted. Only email routes with a verified address get one.</p> : (
+      {!proposal ? (
+        <>
+          <p className="muted">
+            No request drafted automatically: only email routes whose address is in a verified quote on the service&apos;s
+            own domain get one. If you found the address on the company&apos;s site yourself, type it here. The draft is
+            marked as an address you chose.
+          </p>
+          <DraftToAddress id={id} />
+        </>
+      ) : (
         <>
           <p>To <b>{proposal.to}</b> ({proposal.toSource === 'verified_quote' ? 'address from the verified quote' : 'address you typed'}) · status <span className="chip">{proposal.status}</span></p>
           <pre>Subject: {proposal.subject}{'\n\n'}{proposal.body}</pre>
