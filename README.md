@@ -9,7 +9,10 @@ Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 4: *Ghost in the 
 2. **Classify.** A local open model (Gemma 4 E2B via Ollama) separates real accounts from newsletters and suggests which ones are ghosts. Your inbox never leaves your laptop, except to Google itself.
 3. **Breaches.** Joins each service's domain against the free public [Have I Been Pwned](https://haveibeenpwned.com/) breach list. No email lookups.
 4. **Deletion route.** Ultramarine (Paper Instruments) reads the company's *public* privacy pages and returns how to delete the account, with a quote. Code checks the quote is really on the page; an email address is only used if it sits inside that verified quote. Sites that block scripts are read from the Wayback Machine.
-5. **Approval.** Each deletion request is sent from your Gmail only after you approve a push on your phone (Auth0 CIBA + Guardian). Deny, timeout or error: nothing is sent. Nothing is ever sent twice.
+5. **Approval.** Each deletion request is sent from your Gmail only after a human approves it through Auth0:
+   - **Free plans (default):** sign in to Auth0 again (`prompt=login`, `max_age=0`). The server only sends if that sign-in happened *after* you asked to send this item and within the last 2 minutes; one sign-in unlocks one send.
+   - **Paid plans:** set `APPROVAL_MODE=ciba` to approve a push on your phone instead (Auth0 CIBA + Guardian). Deny, timeout or error: nothing is sent.
+   Either way the Gmail token comes from Token Vault, and nothing is ever sent twice.
 
 ## Run it
 Requires Node 22+, [Ollama](https://ollama.com) and an Auth0 tenant with Token Vault and CIBA.

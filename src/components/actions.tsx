@@ -96,3 +96,52 @@ export function AskPhoneButton({ id, disabled }: { id: string; disabled?: boolea
     </div>
   );
 }
+
+// Free-tier approval: sign in to Auth0 again, then send within 2 minutes.
+export function ReauthSend({ id, confirmed, status }: { id: string; confirmed: boolean; status: string }) {
+  const [state, setState] = useState('');
+  const ready = confirmed && status === 'pending_phone';
+  if (status === 'sent') return <p className="muted">Sent.</p>;
+  return (
+    <div>
+      {!ready ? (
+        <button
+          className="primary"
+          disabled={state === 'working'}
+          onClick={async () => {
+            setState('working');
+            const res = await fetch(`/api/confirm/${id}`, { method: 'POST' });
+            const body = await res.json();
+            if (body.login) window.location.href = body.login;
+            else setState(`Error: ${body.error ?? 'could not start'}`);
+          }}
+        >
+          Confirm by signing in to Auth0 again
+        </button>
+      ) : (
+        <button
+          className="primary"
+          disabled={state === 'working'}
+          onClick={async () => {
+            setState('working');
+            const res = await fetch(`/api/send/${id}`, { method: 'POST' });
+            const body = await res.json();
+            if (body.connect) {
+              window.location.href = body.connect;
+              return;
+            }
+            const r = body.result;
+            setState(
+              r?.sent
+                ? `Sent (Gmail id ${r.gmailId}).`
+                : `Not sent: ${r?.outcome ?? body.error ?? 'unknown'}${r?.reason ? ` (${r.reason})` : ''}`,
+            );
+          }}
+        >
+          Signed in again: send now (valid for 2 minutes)
+        </button>
+      )}
+      <p className="muted">{state !== 'working' && state}</p>
+    </div>
+  );
+}

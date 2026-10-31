@@ -1,14 +1,22 @@
 import { notFound } from 'next/navigation';
 
-import { AskPhoneButton } from '@/components/actions';
+import { AskPhoneButton, ReauthSend } from '@/components/actions';
 import { readLedger } from '@/lib/ledger';
+import { APPROVAL_MODE } from '@/lib/reauth';
 import { safeHttpUrl } from '@/lib/safe-url';
 import { loadAll } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Account({ params }: { params: Promise<{ id: string }> }) {
+export default async function Account({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ confirmed?: string }>;
+}) {
   const { id } = await params;
+  const { confirmed } = await searchParams;
   const d = loadAll();
   const c = d.candidates.find((x) => x.id === id);
   if (!c) notFound();
@@ -51,7 +59,11 @@ export default async function Account({ params }: { params: Promise<{ id: string
         <>
           <p>To <b>{proposal.to}</b> ({proposal.toSource === 'verified_quote' ? 'address from the verified quote' : 'address you typed'}) · status <span className="chip">{proposal.status}</span></p>
           <pre>Subject: {proposal.subject}{'\n\n'}{proposal.body}</pre>
-          <AskPhoneButton id={id} disabled={proposal.status === 'sent'} />
+          {APPROVAL_MODE === 'ciba' ? (
+            <AskPhoneButton id={id} disabled={proposal.status === 'sent'} />
+          ) : (
+            <ReauthSend id={id} confirmed={confirmed === '1'} status={proposal.status} />
+          )}
         </>
       )}
 

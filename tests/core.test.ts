@@ -247,3 +247,30 @@ describe('one strict recipient parser', () => {
     expect(parseAddress(' Privacy@Acme.com ')).toEqual({ address: 'privacy@acme.com', domain: 'acme.com' });
   });
 });
+
+import { isFreshConfirmation, loginUrlFor } from '../src/lib/reauth';
+
+describe('fresh sign-in approval (free tier)', () => {
+  const requestedAt = Date.parse('2026-10-31T15:00:00Z');
+  const sec = (iso: string) => Date.parse(iso) / 1000;
+  it('accepts a sign-in made after the request, within 2 minutes', () => {
+    expect(isFreshConfirmation({ requestedAt }, sec('2026-10-31T15:00:30Z'), Date.parse('2026-10-31T15:01:00Z'))).toEqual({ ok: true });
+  });
+  it('rejects an old session that predates the request', () => {
+    expect(isFreshConfirmation({ requestedAt }, sec('2026-10-31T14:00:00Z'), Date.parse('2026-10-31T15:00:10Z'))).toMatchObject({ ok: false });
+  });
+  it('rejects a sign-in older than 2 minutes', () => {
+    expect(isFreshConfirmation({ requestedAt }, sec('2026-10-31T15:00:30Z'), Date.parse('2026-10-31T15:03:00Z'))).toMatchObject({ ok: false });
+  });
+  it('rejects when nothing was requested or no sign-in time exists', () => {
+    expect(isFreshConfirmation(undefined, sec('2026-10-31T15:00:30Z'))).toMatchObject({ ok: false });
+    expect(isFreshConfirmation({ requestedAt }, undefined)).toMatchObject({ ok: false });
+  });
+  it('forces a real re-login and returns to the item', () => {
+    const u = new URL(loginUrlFor('svc-017'), 'http://localhost:3000');
+    expect(u.pathname).toBe('/auth/login');
+    expect(u.searchParams.get('prompt')).toBe('login');
+    expect(u.searchParams.get('max_age')).toBe('0');
+    expect(u.searchParams.get('returnTo')).toBe('/account/svc-017?confirmed=1');
+  });
+});
