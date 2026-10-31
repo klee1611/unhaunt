@@ -147,3 +147,32 @@ describe('matchBreaches', () => {
     ]);
   });
 });
+
+import { isPrivateAddress, looksPublicHostname, safeHttpUrl } from '../src/lib/safe-url';
+
+describe('fetch and link safety', () => {
+  it('drops forged From hosts that are IPs or local names', () => {
+    expect(serviceDomain('Evil <a@127.0.0.1>')).toBeNull();
+    expect(serviceDomain('Evil <a@[192.168.1.1]>')).toBeNull();
+    expect(serviceDomain('Evil <a@router.local>')).toBeNull();
+    expect(serviceDomain('Evil <a@localhost>')).toBeNull();
+  });
+  it('only allows public-looking hostnames', () => {
+    expect(looksPublicHostname('www.dropbox.com')).toBe(true);
+    for (const h of ['127.0.0.1', 'localhost', 'intranet', 'printer.local', '::1', 'x.internal']) {
+      expect(looksPublicHostname(h)).toBe(false);
+    }
+  });
+  it('flags private, loopback and link-local addresses', () => {
+    for (const ip of ['127.0.0.1', '10.1.2.3', '172.20.0.1', '192.168.0.1', '169.254.169.254', '100.64.0.1', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1']) {
+      expect(isPrivateAddress(ip)).toBe(true);
+    }
+    expect(isPrivateAddress('93.184.216.34')).toBe(false);
+  });
+  it('keeps only http(s) URLs from model output', () => {
+    expect(safeHttpUrl('https://acme.com/settings/delete')).toBe('https://acme.com/settings/delete');
+    expect(safeHttpUrl('javascript:alert(1)')).toBeNull();
+    expect(safeHttpUrl('data:text/html,hi')).toBeNull();
+    expect(safeHttpUrl('not a url')).toBeNull();
+  });
+});

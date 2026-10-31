@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { AskPhoneButton } from '@/components/actions';
 import { readLedger } from '@/lib/ledger';
+import { safeHttpUrl } from '@/lib/safe-url';
 import { loadAll } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
         <>
           <p>
             Method: <b>{route.method}</b>{route.contact && <> · contact <b>{route.contact}</b></>}
-            {route.url && <> · <a href={route.url}>{route.url}</a></>}
+            {safeHttpUrl(route.url) && <> · <a href={safeHttpUrl(route.url)!} rel="noreferrer noopener">{route.url}</a></>}
             {' '}{route.quoteVerified ? <span className="chip ok">quote verified on page</span> : <span className="chip bad">quote not found on page</span>}
           </p>
           {route.quote && <blockquote>{route.quote}<br /><span className="muted">— {route.sourceUrl}</span></blockquote>}

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { readJson, writeJson } from './ledger';
 import { jsonCall } from './model';
 import { emailInQuote, quoteIsOnPage } from './quote';
+import { looksPublicHostname, safeHttpUrl, isPublicHost } from './safe-url';
 import type { Route } from './store';
 
 // Only public pages and the service's domain go to Ultramarine. Nothing from the inbox.
@@ -29,22 +30,41 @@ function htmlToText(html: string) {
     .trim();
 }
 
+// Follows redirects by hand so every hop is checked: http(s) only, public hosts only.
 async function getHtml(url: string): Promise<{ status: number; url: string; html: string | null }> {
+  let current = url;
   try {
-    const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10000), headers: { 'user-agent': UA } });
-    const html = res.ok && (res.headers.get('content-type') ?? '').includes('html') ? await res.text() : null;
-    return { status: res.status, url: res.url, html };
+    for (let hop = 0; hop < 5; hop++) {
+      const safe = safeHttpUrl(current);
+      if (!safe || !(await isPublicHost(new URL(safe).hostname))) return { status: 0, url: current, html: null };
+      const res = await fetch(safe, { redirect: 'manual', signal: AbortSignal.timeout(10000), headers: { 'user-agent': UA } });
+      const location = res.headers.get('location');
+      if (res.status >= 300 && res.status < 400 && location) {
+        current = new URL(location, safe).toString();
+        continue;
+      }
+      const html = res.ok && (res.headers.get('content-type') ?? '').includes('html') ? await res.text() : null;
+      return { status: res.status, url: safe, html };
+    }
+    return { status: 0, url: current, html: null };
   } catch {
-    return { status: 0, url, html: null };
+    return { status: 0, url: current, html: null };
   }
 }
 
 // Sites that block scripts (HTTP 403) are read from the Internet Archive's newest copy instead.
 async function fromWayback(target: string): Promise<Page | null> {
   try {
-    const res = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(target)}`, {
-      signal: AbortSignal.timeout(10000),
-    });
+    // archive.org rate-limits bursts (429): back off and retry a couple of times.
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(target)}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.status !== 429) break;
+      await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
+    }
+    if (!res?.ok) return null;
     const snap = (await res.json())?.archived_snapshots?.closest;
     if (!snap?.available || !snap.timestamp) return null;
     // "id_" asks for the original page without the archive toolbar.
@@ -65,6 +85,7 @@ const useful = (text: string) => text.length > 1500 && KEYWORDS.test(text);
 
 export async function fetchPolicyPages(domain: string, max = 2): Promise<Page[]> {
   const pages: Page[] = [];
+  if (!looksPublicHostname(domain)) return pages;
   let blocked = false;
   for (const host of [`www.${domain}`, domain]) {
     for (const path of PATHS) {
@@ -142,10 +163,10 @@ function toRoute(a: RouteAnswer | null, pages: Page[], costUsd: number): Route {
   return {
     method: a.method,
     contact,
-    url: a.url,
+    url: safeHttpUrl(a.url),
     quote: a.quote,
     quoteVerified,
-    sourceUrl: a.source_url,
+    sourceUrl: safeHttpUrl(a.source_url),
     confidence: a.confidence,
     costUsd,
   };

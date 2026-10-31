@@ -1,4 +1,4 @@
-import { getDomain } from 'tldts';
+import { parse } from 'tldts';
 
 // One email as fetched from Gmail with format=metadata (no bodies).
 export interface MailMeta {
@@ -65,7 +65,9 @@ export function parseFrom(from: string): { name: string; address: string; domain
 
 export function serviceDomain(from: string): string | null {
   const { name, domain } = parseFrom(from);
-  const reg = getDomain(domain) ?? domain;
+  // Only hosts under a real public suffix: forged From headers with IPs or local names stop here.
+  const parsed = parse(domain);
+  const reg = parsed.isIcann && !parsed.isIp ? parsed.domain : null;
   if (!reg || PERSONAL_PROVIDERS.has(reg)) return null;
   if (ESP_DOMAINS.has(reg)) {
     // Fall back to the display name so "Acme via SendGrid" still groups as Acme.
