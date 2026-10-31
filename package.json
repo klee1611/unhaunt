@@ -1,0 +1,45 @@
+{
+  "name": "unhaunt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "classify": "tsx scripts/classify.ts",
+    "breaches": "tsx scripts/breaches.ts",
+    "routes": "tsx scripts/routes.ts",
+    "sample": "tsx scripts/sample.ts",
+    "eval": "tsx scripts/eval.ts",
+    "redact": "tsx scripts/redact.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@auth0/ai": "^6.0.2",
+    "@auth0/ai-vercel": "^5.1.1",
+    "@auth0/nextjs-auth0": "^4.18.0",
+    "ai": "^6.0.0",
+    "gaxios": "^7.1.2",
+    "googleapis": "161",
+    "next": "15.5.24",
+    "openai": "^5.23.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "tldts": "^7.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "@types/react": "19.2.1",
+    "@types/react-dom": "19.2.1",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

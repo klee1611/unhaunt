@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+# Private run data: inbox metadata, raw labels, model/Ultramarine outputs.
+data/*
+!data/.gitkeep
+# Redacted, publishable outputs live here instead.
+!public/replay/
