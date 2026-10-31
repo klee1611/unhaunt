@@ -178,3 +178,38 @@ export function DisconnectGmailButton() {
     </span>
   );
 }
+
+// Records your hand-checked deletion route; the page reveals the models' answers only after this.
+export function RouteTruthForm({ id, saved }: { id: string; saved?: { method: string; contact: string | null; url: string | null } }) {
+  const [method, setMethod] = useState(saved?.method ?? 'self_serve');
+  const [contact, setContact] = useState(saved?.contact ?? '');
+  const [url, setUrl] = useState(saved?.url ?? '');
+  const [state, setState] = useState(saved ? 'saved' : '');
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <select value={method} onChange={(e) => setMethod(e.target.value)}>
+        <option value="self_serve">self-serve (settings page)</option>
+        <option value="email">email</option>
+        <option value="form">web form</option>
+        <option value="unknown">couldn't find one</option>
+      </select>
+      {method === 'email' && <input placeholder="privacy@company.com" value={contact} onChange={(e) => setContact(e.target.value)} />}
+      {(method === 'self_serve' || method === 'form') && <input placeholder="https://… (optional)" value={url} onChange={(e) => setUrl(e.target.value)} />}
+      <button
+        onClick={async () => {
+          const res = await fetch('/api/route-truth', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ id, method, contact, url }),
+          });
+          const b = await res.json();
+          setState(b.ok ? 'saved' : `error: ${b.error}`);
+          if (b.ok) window.location.reload();
+        }}
+      >
+        Save
+      </button>
+      <span className="muted">{state}</span>
+    </span>
+  );
+}

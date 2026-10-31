@@ -13,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <a href="/" className="brand">👻 Unhaunt</a>
           <nav>
             <a href="/">Census</a>
+            <a href="/routes">Routes</a>
             <a href="/auth/logout">Log out</a>
           </nav>
         </header>
