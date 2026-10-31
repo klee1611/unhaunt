@@ -1,4 +1,4 @@
-import { CensusButton, LabelButtons } from '@/components/actions';
+import { CensusButton, DisconnectGmailButton, LabelButtons } from '@/components/actions';
 import { lazyRuleGhost } from '@/lib/census';
 import { loadAll } from '@/lib/store';
 
@@ -19,7 +19,7 @@ export default async function Census({ searchParams }: { searchParams: Promise<{
         Services found in your Gmail signup and welcome emails. Headers only; the inbox never leaves this laptop
         except to Google and the local model.
       </p>
-      <CensusButton />
+      <CensusButton /> <DisconnectGmailButton />
       <div className="stats">
         <div className="stat"><b>{d.candidates.length}</b>services</div>
         <div className="stat"><b>{d.candidates.filter((c) => c.ruleKind === 'account').length}</b>accounts (rules)</div>

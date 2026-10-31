@@ -15,7 +15,7 @@ Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 4: *Ghost in the 
    Either way the Gmail token comes from Token Vault, and nothing is ever sent twice.
 
 ## Run it
-Requires Node 22+, [Ollama](https://ollama.com) and an Auth0 tenant with Token Vault and CIBA.
+Requires Node 22+, [Ollama](https://ollama.com) and an Auth0 tenant with Token Vault (free plan works; CIBA optional).
 
 ```bash
 ollama pull gemma4:e2b-it-qat
@@ -33,6 +33,8 @@ Any OpenAI-compatible open-model endpoint works: set `MODEL_BASE_URL` and `MODEL
 ## Privacy
 Everything the pipeline produces stays in `data/`, which is gitignored. Only aggregate numbers (`docs/results.md`) and a redacted replay are meant to be published.
 
+To take it all back: **Disconnect Gmail** in the app (revokes at Google and removes the Token Vault connection), then `npm run forget -- --yes`. Full details, including revoking at Google directly: [docs/privacy-and-revocation.md](docs/privacy-and-revocation.md).
+
 ## Notes
-- `docs/failures.md`: what went wrong along the way, quoted.
+- `docs/`: [privacy and revocation](docs/privacy-and-revocation.md), [security audit](docs/security.md), [failure log](docs/failures.md).
 - Code is MIT licensed.

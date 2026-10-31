@@ -14,7 +14,8 @@
     "routes": "tsx scripts/routes.ts",
     "sample": "tsx scripts/sample.ts",
     "eval": "tsx scripts/eval.ts",
-    "redact": "tsx scripts/redact.ts"
+    "redact": "tsx scripts/redact.ts",
+    "forget": "tsx scripts/forget.ts"
   },
   "engines": {
     "node": ">=22"

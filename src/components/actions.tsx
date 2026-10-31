@@ -145,3 +145,36 @@ export function ReauthSend({ id, confirmed, status }: { id: string; confirmed: b
     </div>
   );
 }
+
+// Two clicks, no browser dialog: revoke at Google, then delete the Token Vault connection.
+export function DisconnectGmailButton() {
+  const [armed, setArmed] = useState(false);
+  const [state, setState] = useState('');
+  return (
+    <span>
+      <button
+        className={armed ? 'on' : ''}
+        disabled={state === 'working'}
+        onClick={async () => {
+          if (!armed) {
+            setArmed(true);
+            return;
+          }
+          setState('working');
+          const res = await fetch('/api/disconnect', { method: 'POST' });
+          const b = await res.json();
+          setArmed(false);
+          setState(
+            b.ok
+              ? `Google grant ${b.google.revoked ? 'revoked' : `not revoked (${b.google.note ?? b.google.status})`}; ` +
+                  ('error' in b.vault ? `Token Vault: ${b.vault.error}` : `Token Vault: ${b.vault.deleted}/${b.vault.found} removed`)
+              : `Error: ${b.error}`,
+          );
+        }}
+      >
+        {state === 'working' ? 'Disconnecting…' : armed ? 'Click again to disconnect Gmail' : 'Disconnect Gmail'}
+      </button>{' '}
+      <span className="muted">{state !== 'working' && state}</span>
+    </span>
+  );
+}
