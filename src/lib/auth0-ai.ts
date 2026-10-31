@@ -6,7 +6,8 @@ import {
 } from '@auth0/ai/interrupts';
 
 import { getRefreshToken, getUser } from './auth0';
-import { logEvent } from './ledger';
+import { logEvent, readJson, type Proposal } from './ledger';
+import { bindingMessage } from './request-guard';
 
 export const GMAIL_SCOPES = [
   'openid',
@@ -35,8 +36,9 @@ export const withPhoneApproval = auth0AI.withAsyncAuthorization({
     const user = await getUser();
     return user?.sub as string;
   },
-  // Auth0 limits binding messages to 64 characters of [a-zA-Z0-9 +-_.,:#]. No email or service names here.
-  bindingMessage: async ({ id }: { id: string }) => `Unhaunt: send deletion request #${id.replace('svc-', '')}`,
+  // Shown on the phone: request number and the recipient's domain, so you know where it goes.
+  bindingMessage: async ({ id }: { id: string }) =>
+    bindingMessage(id, readJson<Record<string, Proposal>>('proposals.json', {})[id]?.to),
   scopes: ['openid', 'send:deletion_request'],
   audience: process.env.GHOST_API_AUDIENCE,
   requestedExpiry: 120,

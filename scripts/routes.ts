@@ -2,6 +2,7 @@ import './env';
 
 import type { Candidate } from '../src/lib/census';
 import { logEvent, readJson, writeJson, type Proposal } from '../src/lib/ledger';
+import { recipientMatchesService } from '../src/lib/request-guard';
 import type { Label, Route } from '../src/lib/store';
 import { fetchPolicyPages, localRoute, readUsage, ultramarineRoute } from '../src/lib/ultramarine';
 
@@ -43,11 +44,17 @@ for (const id of ids) {
   localRoutes[id] = (await localRoute(c.displayName, c.domain, pages)).route;
   console.log(`${id} ${c.domain}: ultramarine=${um.route.method}${um.route.contact ? ` ${um.route.contact}` : ''} verified=${um.route.quoteVerified} · gemma=${localRoutes[id].method}`);
 
-  // Draft a request only for ghosts with an email route whose address sits in a verified quote.
-  if (labels[id]?.user === 'ghost' && um.route.method === 'email' && um.route.contact && !proposals[id]) {
+  // Draft a request only for ghosts with an email route whose address sits in a verified quote
+  // and belongs to the service itself. Third-party addresses are left for you to confirm by hand.
+  const contact = um.route.contact;
+  if (labels[id]?.user === 'ghost' && um.route.method === 'email' && contact && !recipientMatchesService(contact, c.domain)) {
+    console.log(`${id}: ${contact} is not on ${c.domain}; not drafted, check it by hand`);
+    logEvent({ type: 'recipient_needs_review', id });
+  }
+  if (labels[id]?.user === 'ghost' && um.route.method === 'email' && contact && recipientMatchesService(contact, c.domain) && !proposals[id]) {
     proposals[id] = {
       id,
-      to: um.route.contact,
+      to: contact,
       toSource: 'verified_quote',
       subject: `Account and personal data deletion request`,
       body: [

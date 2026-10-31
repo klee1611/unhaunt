@@ -27,7 +27,7 @@
     "gaxios": "^7.1.2",
     "googleapis": "161",
     "ipaddr.js": "^2.5.0",
-    "next": "15.5.24",
+    "next": "^15.5.28",
     "openai": "^5.23.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
@@ -43,5 +43,8 @@
     "tsx": "^4.20.6",
     "typescript": "5.9.3",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "axios": "^1.21.0"
   }
 }

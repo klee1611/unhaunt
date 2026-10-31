@@ -193,3 +193,33 @@ describe('fetch and link safety', () => {
     expect(safeHttpUrl('not a url')).toBeNull();
   });
 });
+
+import { bindingMessage, isAllowedUser, isSameOrigin, recipientMatchesService } from '../src/lib/request-guard';
+
+describe('request guards', () => {
+  const base = 'http://localhost:3000';
+  it('refuses state-changing requests from other origins, including other localhost ports', () => {
+    expect(isSameOrigin('POST', 'http://localhost:3000', base)).toBe(true);
+    expect(isSameOrigin('POST', 'http://localhost:5173', base)).toBe(false);
+    expect(isSameOrigin('POST', 'https://evil.example', base)).toBe(false);
+    expect(isSameOrigin('POST', null, base)).toBe(false);
+    expect(isSameOrigin('GET', null, base)).toBe(true);
+  });
+  it('enforces the optional owner allowlist', () => {
+    expect(isAllowedUser('me@x.com', '')).toBe(true);
+    expect(isAllowedUser('me@x.com', 'me@x.com, other@y.com')).toBe(true);
+    expect(isAllowedUser('stranger@z.com', 'me@x.com')).toBe(false);
+    expect(isAllowedUser(undefined, 'me@x.com')).toBe(false);
+  });
+  it('names the recipient domain on the phone within Auth0 limits', () => {
+    expect(bindingMessage('svc-017', 'privacy@acme.com')).toBe('Unhaunt: deletion request #017 to acme.com');
+    const long = bindingMessage('svc-017', `dpo@${'a'.repeat(80)}.com`);
+    expect(long.length).toBeLessThanOrEqual(64);
+    expect(long).toMatch(/^[a-zA-Z0-9 +\-_.,:#]+$/);
+  });
+  it('only auto-drafts to addresses on the service domain', () => {
+    expect(recipientMatchesService('privacy@acme.com', 'acme.com')).toBe(true);
+    expect(recipientMatchesService('dpo@eu.acme.com', 'acme.com')).toBe(true);
+    expect(recipientMatchesService('acme@privacy-vendor.com', 'acme.com')).toBe(false);
+  });
+});
