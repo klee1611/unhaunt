@@ -274,3 +274,28 @@ describe('fresh sign-in approval (free tier)', () => {
     expect(u.searchParams.get('returnTo')).toBe('/account/svc-017?confirmed=1');
   });
 });
+
+import { withBackoff } from '../src/lib/gmail';
+
+describe('Gmail retry on rate limits', () => {
+  it('retries errors shaped like googleapis errors (no instanceof), then succeeds', async () => {
+    let calls = 0;
+    const out = await withBackoff(async () => {
+      calls++;
+      if (calls === 1) throw Object.assign(new Error('Quota exceeded'), { status: 403 });
+      return 'ok';
+    }, 5);
+    expect(out).toBe('ok');
+    expect(calls).toBe(2);
+  });
+  it('turns a 401 into a Token Vault reconnect, without retrying', async () => {
+    let calls = 0;
+    await expect(
+      withBackoff(async () => {
+        calls++;
+        throw Object.assign(new Error('unauthorized'), { response: { status: 401 } });
+      }, 5),
+    ).rejects.toThrow(/Token Vault/);
+    expect(calls).toBe(1);
+  });
+});

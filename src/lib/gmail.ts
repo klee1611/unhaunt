@@ -1,4 +1,3 @@
-import { GaxiosError } from 'gaxios';
 import { google, type gmail_v1 } from 'googleapis';
 import { TokenVaultError } from '@auth0/ai/interrupts';
 
@@ -11,9 +10,10 @@ export function gmailClient(accessToken: string) {
   return google.gmail({ version: 'v1', auth });
 }
 
-// Gmail allows 250 quota units per user per second (list = 5, get = 5, send = 100).
-// A token bucket keeps us at 150/s, well under the limit, however many calls run at once.
-const UNITS_PER_SECOND = 150;
+// Gmail charges quota units per call (list = 5, get = 5, send = 100). New projects get
+// 6,000 units per minute per user (100/s; Google's docs still say 15,000). A token bucket keeps
+// us at 80/s by default, however many calls run at once.
+const UNITS_PER_SECOND = Number(process.env.GMAIL_UNITS_PER_SECOND ?? 80);
 let bucket = UNITS_PER_SECOND;
 let lastRefill = Date.now();
 
@@ -34,16 +34,19 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Retries on Gmail rate limits (up to ~1 minute, honouring Retry-After); a 401 means the
 // Token Vault connection needs consent again.
-async function withBackoff<T>(fn: () => Promise<T>, units: number, tries = 7): Promise<T> {
+export async function withBackoff<T>(fn: () => Promise<T>, units: number, tries = 7): Promise<T> {
   for (let i = 0; ; i++) {
     await spend(units);
     try {
       return await fn();
     } catch (err) {
-      if (err instanceof GaxiosError) {
-        if (err.status === 401) throw new TokenVaultError('Authorization required to access the Token Vault');
-        if ((err.status === 429 || err.status === 403 || (err.status ?? 0) >= 500) && i < tries - 1) {
-          const retryAfter = Number(err.response?.headers?.get?.('retry-after') ?? NaN);
+      // googleapis bundles its own gaxios, so `instanceof GaxiosError` never matches: read the status.
+      const e = err as { status?: number; code?: number | string; response?: { status?: number; headers?: { get?: (k: string) => string | null } } };
+      const status = e.status ?? e.response?.status ?? (typeof e.code === 'number' ? e.code : undefined);
+      if (status !== undefined) {
+        if (status === 401) throw new TokenVaultError('Authorization required to access the Token Vault');
+        if ((status === 429 || status === 403 || status >= 500) && i < tries - 1) {
+          const retryAfter = Number(e.response?.headers?.get?.('retry-after') ?? NaN);
           await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : Math.min(32_000, 1000 * 2 ** i));
           continue;
         }
