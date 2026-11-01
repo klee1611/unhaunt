@@ -299,3 +299,14 @@ describe('Gmail retry on rate limits', () => {
     expect(calls).toBe(1);
   });
 });
+
+import { spend } from '../src/lib/gmail';
+
+describe('Gmail quota bucket', () => {
+  it('lets a call costlier than one second of budget through (send = 100 units)', async () => {
+    const started = Date.now();
+    await spend(100);
+    await spend(100);
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});

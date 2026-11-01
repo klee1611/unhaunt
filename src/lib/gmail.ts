@@ -17,7 +17,9 @@ const UNITS_PER_SECOND = Number(process.env.GMAIL_UNITS_PER_SECOND ?? 80);
 let bucket = UNITS_PER_SECOND;
 let lastRefill = Date.now();
 
-export async function spend(units: number) {
+export async function spend(requested: number) {
+  // A call can cost more than one second of budget (send = 100 > 80/s): wait for a full bucket instead.
+  const units = Math.min(requested, UNITS_PER_SECOND);
   for (;;) {
     const now = Date.now();
     bucket = Math.min(UNITS_PER_SECOND, bucket + ((now - lastRefill) / 1000) * UNITS_PER_SECOND);
