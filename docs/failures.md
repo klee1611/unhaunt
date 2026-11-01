@@ -34,3 +34,10 @@ Every wrong or surprising model output, quoted exactly, with the fix. Newest las
 - **Takeaway:** the model is never allowed to decide. Every ghost is marked by me, and every send
   needs a fresh Auth0 sign-in. Not tuned on this sample: tuning against the test set would make the
   number meaningless.
+
+## 5. Cloudflare hid the address from both models (Oct 31, 20:50 EDT)
+- **Setup:** one service's privacy page (a coding-course site) states the deletion address in plain text in a browser.
+- **What the models saw:** the fetched HTML shows `[email&#160;protected]` in its place: Cloudflare's
+  email obfuscation, which only a browser running JavaScript decodes.
+- **Result:** Ultramarine correctly answered "email" with a verified quote, but no address; our guard
+  then had nothing to keep. I drafted that request with the address typed by hand (marked as such).
