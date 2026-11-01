@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 export default {
   poweredByHeader: false,
+  devIndicators: false,
   async headers() {
     return [
       {

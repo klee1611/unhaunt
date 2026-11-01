@@ -27,7 +27,7 @@ export const readInboxTool = withGmail(
         async (c: Candidate) => {
           const latest = await latestFrom(gmail, c.domain);
           if (latest && latest.date > c.lastSeen) c.lastSeen = latest.date;
-          if (latest) c.msgCount = Math.max(c.msgCount, latest.count);
+          // Not used for msgCount: Gmail's resultSizeEstimate is unreliable (it said 201 for every sender).
         },
       );
 

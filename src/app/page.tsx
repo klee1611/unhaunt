@@ -1,11 +1,14 @@
 import { CensusButton, DisconnectGmailButton, LabelButtons } from '@/components/actions';
 import { lazyRuleGhost } from '@/lib/census';
+import { isRedacted } from '@/lib/redact';
 import { loadAll } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Census({ searchParams }: { searchParams: Promise<{ sample?: string }> }) {
-  const { sample: onlySample } = await searchParams;
+export default async function Census({ searchParams }: { searchParams: Promise<{ sample?: string; redact?: string }> }) {
+  const { sample: onlySample, redact } = await searchParams;
+  const R = isRedacted(redact);
+  const q = R ? 'redact=1' : '';
   const d = loadAll();
   const sampleSet = new Set(d.sample);
   const rows = onlySample ? d.candidates.filter((c) => sampleSet.has(c.id)) : d.candidates;
@@ -28,7 +31,7 @@ export default async function Census({ searchParams }: { searchParams: Promise<{
         <div className="stat"><b>{ghosts}</b>marked ghost</div>
       </div>
       <p>
-        <a href="/">All</a> · <a href="/?sample=1">Frozen answer-key sample ({d.sample.length})</a>
+        <a href={`/?${q}`}>All</a> · <a href={`/?sample=1&${q}`}>Frozen answer-key sample ({d.sample.length})</a>
       </p>
       <div className="table-wrap">
         <table>
@@ -44,11 +47,11 @@ export default async function Census({ searchParams }: { searchParams: Promise<{
               const b = d.breaches[c.id] ?? [];
               return (
                 <tr key={c.id}>
-                  <td><a href={`/account/${c.id}`}>{c.id}</a>{sampleSet.has(c.id) && ' ★'}</td>
-                  <td>{c.displayName}<br /><span className="muted">{c.domain} · {c.msgCount} mails</span></td>
+                  <td><a href={`/account/${c.id}${R ? '?redact=1' : ''}`}>{c.id}</a>{sampleSet.has(c.id) && ' ★'}</td>
+                  <td>{R ? `Service ${c.id}` : c.displayName}<br /><span className="muted">{R ? '•••' : c.domain} · {c.msgCount} mails</span></td>
                   <td>{c.firstSeen.slice(0, 10)}<br />{c.lastSeen.slice(0, 10)}</td>
                   <td><span className="chip">{c.ruleKind}</span></td>
-                  <td>{cls ? <span className="chip" title={cls.reason}>{cls.kind}</span> : <span className="muted">—</span>}</td>
+                  <td>{cls ? <span className="chip" title={R ? undefined : cls.reason}>{cls.kind}</span> : <span className="muted">—</span>}</td>
                   <td>{lazyRuleGhost(c.lastSeen) ? <span className="chip ghost">ghost</span> : <span className="chip">live</span>}</td>
                   <td>{b.length ? <span className="chip bad">{b.filter((x) => x.afterSignup).length}/{b.length}</span> : ''}</td>
                   <td><LabelButtons id={c.id} field="account" value={d.labels[c.id]?.account} /></td>

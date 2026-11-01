@@ -41,3 +41,11 @@ Every wrong or surprising model output, quoted exactly, with the fix. Newest las
   email obfuscation, which only a browser running JavaScript decodes.
 - **Result:** Ultramarine correctly answered "email" with a verified quote, but no address; our guard
   then had nothing to keep. I drafted that request with the address typed by hand (marked as such).
+
+## 6. Every service "had 201 emails" (Oct 31, 21:55 EDT, found while taking screenshots)
+- **What:** the census overwrote each service's email count with Gmail's `resultSizeEstimate`, which
+  returned 201 for every sender. That number was in Gemma's prompt ("Emails: 201") for all 430 calls.
+- **Effect:** a confound in the ghost result: Gemma saw the same, wrong volume for every service, so the
+  only activity signal it could use was the last-email date (which it largely ignored, see entry 4).
+- **Fix:** the count is no longer taken from the estimate. Not re-run before the deadline; the published
+  ghost numbers carry this caveat.

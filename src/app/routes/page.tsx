@@ -1,12 +1,13 @@
 import { RouteTruthForm } from '@/components/actions';
 import { readJson } from '@/lib/ledger';
+import { isRedacted, maskEmail } from '@/lib/redact';
 import { loadAll, type Route } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
 type Truth = { method: string; contact: string | null; url: string | null; alternatives?: { method: string; contact?: string | null }[]; excluded?: string };
 
-function Answer({ r, truth }: { r?: Route; truth: Truth }) {
+function Answer({ r, truth, R }: { r?: Route; truth: Truth; R: boolean }) {
   if (!r) return <span className="muted">not run</span>;
   const ok = (t: { method: string; contact?: string | null }) =>
     r.method === t.method && (t.method !== 'email' || (r.contact ?? '').toLowerCase() === (t.contact ?? '').toLowerCase());
@@ -14,13 +15,14 @@ function Answer({ r, truth }: { r?: Route; truth: Truth }) {
   return (
     <span>
       <span className={`chip ${right ? 'ok' : 'bad'}`}>{right ? 'right' : 'wrong'}</span> {r.method}
-      {r.contact ? ` · ${r.contact}` : ''} {r.quote ? (r.quoteVerified ? '· quote verified' : '· quote NOT on page') : ''}
+      {r.contact ? ` · ${R ? maskEmail(r.contact) : r.contact}` : ''} {r.quote ? (r.quoteVerified ? '· quote verified' : '· quote NOT on page') : ''}
     </span>
   );
 }
 
 // Blind check: record what the company's own site says first; the models' answers appear after.
-export default async function Routes() {
+export default async function Routes({ searchParams }: { searchParams: Promise<{ redact?: string }> }) {
+  const R = isRedacted((await searchParams).redact);
   const d = loadAll();
   const ids = readJson<string[]>('route-eval-ids.json', []);
   const truth = readJson<Record<string, Truth>>('route-truth.json', {});
@@ -47,14 +49,14 @@ export default async function Routes() {
               return (
                 <tr key={id}>
                   <td>{id}</td>
-                  <td>{c.displayName}<br /><span className="muted">{c.domain}</span></td>
-                  <td>
+                  <td>{R ? `Service ${id}` : c.displayName}<br /><span className="muted">{R ? '•••' : c.domain}</span></td>
+                  <td>{R ? '(links hidden)' : <>
                     <a href={`https://www.${c.domain}/privacy`} target="_blank" rel="noreferrer noopener">/privacy</a>{' · '}
-                    <a href={`https://duckduckgo.com/?q=${encodeURIComponent(`${c.displayName} delete account`)}`} target="_blank" rel="noreferrer noopener">search</a>
+                    <a href={`https://duckduckgo.com/?q=${encodeURIComponent(`${c.displayName} delete account`)}`} target="_blank" rel="noreferrer noopener">search</a></>}
                   </td>
-                  <td><RouteTruthForm id={id} saved={t} /></td>
-                  <td>{t ? <Answer r={d.routes[id]} truth={t} /> : <span className="muted">hidden</span>}</td>
-                  <td>{t ? <Answer r={local[id]} truth={t} /> : <span className="muted">hidden</span>}</td>
+                  <td>{R && t ? <span>{t.method}{t.contact ? ` · ${maskEmail(t.contact)}` : ''}</span> : <RouteTruthForm id={id} saved={t} />}</td>
+                  <td>{t ? <Answer r={d.routes[id]} truth={t} R={R} /> : <span className="muted">hidden</span>}</td>
+                  <td>{t ? <Answer r={local[id]} truth={t} R={R} /> : <span className="muted">hidden</span>}</td>
                 </tr>
               );
             })}
