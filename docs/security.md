@@ -1,6 +1,6 @@
 # Security audit — Unhaunt
 
-**Date:** 2026-10-31 · **Scope:** this repository (local Next.js app on `localhost:3000`, scripts, dependencies).
+**Date:** 2026-10-31 (updated 2026-11-01 before publishing) · **Scope:** this repository (local Next.js app on `localhost:3000`, scripts, dependencies).
 **Not in scope:** network reconnaissance and external penetration testing (nothing is internet-facing).
 
 ## Threat model
@@ -22,6 +22,11 @@ your browser (other `localhost` ports count as the same site).
 | S7 | Any user of the Auth0 tenant could use the app | Low | **Fixed (opt-in)**: `ALLOWED_EMAILS`; also disable sign-ups in Auth0 |
 | S8 | Raw HTTP-client errors logged (may carry request config) | Low | **Fixed**: log name, status and message only |
 | S9 | No anti-framing / sniffing headers | Low | **Fixed**: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, `no-referrer` |
+| S10 | Two simultaneous sends for one item (double-click, two tabs) could both pass the checks and email twice | Medium | **Fixed**: one approval-and-send in flight per item; a second request gets 409 (test added) |
+| S11 | `/api/confirm` on a sent item threw (500) | Low | **Fixed**: clean 409 |
+| S12 | Redacted view masks only known strings (name, domain, its first label) and emails | Low | **Accepted**: best-effort; every published screenshot was reviewed by eye |
+| P1 | Pre-publication: one tracked doc named a real service from my inbox | Medium | **Fixed** in the file; removed from history before going public |
+| P2 | Pre-publication: personal Gmail address as commit author/committer | Low | **Fixed** before going public: history rewritten to the GitHub no-reply address |
 | D1 | `next` 15.5.24: critical cache-poisoning advisories | Critical | **Fixed**: 15.5.28 |
 | D2 | `axios` (via `@auth0/ai` → `@openfga/sdk`) prototype-pollution gadgets | High | **Fixed**: override to 1.21.0 |
 | D3 | `zod` 3 memory exhaustion on huge collections | High (advisory) | **Accepted**: only tiny objects are validated; zod 4 breaks `@auth0/ai` |
@@ -41,5 +46,5 @@ a quote verified on the page; secrets only in gitignored `.env.local`.
 - CIBA request expiry stays at 120 s (push channel only).
 
 ## Verification
-`npm test` (49 tests, incl. crafted recipients, incl. SSRF, CSRF, link provenance, binding message, approval states),
+`npm test` (58 tests, incl. crafted recipients, simultaneous sends, incl. SSRF, CSRF, link provenance, binding message, approval states),
 `npm audit --omit=dev` (no critical), `next build` passes.

@@ -15,7 +15,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: 'no proposal' }, { status: 404 });
   }
   // drafted / denied / expired / error / approved_not_sent → pending approval
-  proposals[id] = transition(proposals[id], 'pending_phone');
+  try {
+    proposals[id] = transition(proposals[id], 'pending_phone');
+  } catch {
+    return NextResponse.json({ ok: false, error: `request is ${proposals[id].status}; nothing to confirm` }, { status: 409 });
+  }
   writeJson('proposals.json', proposals);
   startConfirmation(id);
   logEvent({ type: 'reauth_requested', id });

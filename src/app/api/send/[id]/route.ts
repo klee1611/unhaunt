@@ -4,6 +4,7 @@ import { auth0 } from '@/lib/auth0';
 import { logEvent, readJson, transition, writeJson, type Proposal } from '@/lib/ledger';
 import { APPROVAL_MODE, checkAndConsume } from '@/lib/reauth';
 import { SERVICE_ID } from '@/lib/request-guard';
+import { withItemLock } from '@/lib/lock';
 import { requireUser, runTool } from '@/lib/run-tool';
 import { sendAfterReauthTool, sendDeletionRequestTool } from '@/lib/tools';
 
@@ -15,10 +16,17 @@ function setStatus(id: string, status: Proposal['status']) {
   writeJson('proposals.json', latest);
 }
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await requireUser();
   if (denied) return denied;
-  const { id } = await params;
+  const { id } = await ctx.params;
+  const res = await withItemLock(id, () => handle(id));
+  return res.locked
+    ? NextResponse.json({ ok: false, error: 'a send for this item is already in progress' }, { status: 409 })
+    : res.value;
+}
+
+async function handle(id: string) {
   const proposals = readJson<Record<string, Proposal>>('proposals.json', {});
   if (!SERVICE_ID.test(id) || !Object.hasOwn(proposals, id)) {
     return NextResponse.json({ ok: false, error: 'no proposal' }, { status: 404 });

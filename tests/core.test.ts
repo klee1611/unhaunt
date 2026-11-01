@@ -310,3 +310,18 @@ describe('Gmail quota bucket', () => {
     expect(Date.now() - started).toBeLessThan(3000);
   });
 });
+
+import { withItemLock } from '../src/lib/lock';
+
+describe('one send at a time per item', () => {
+  it('refuses a second simultaneous request for the same item, allows other items', async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((r) => (release = r));
+    const first = withItemLock('svc-001', async () => { await slow; return 'sent'; });
+    expect(await withItemLock('svc-001', async () => 'sent again')).toEqual({ locked: true });
+    expect(await withItemLock('svc-002', async () => 'other')).toEqual({ locked: false, value: 'other' });
+    release();
+    expect(await first).toEqual({ locked: false, value: 'sent' });
+    expect(await withItemLock('svc-001', async () => 'later')).toEqual({ locked: false, value: 'later' });
+  });
+});
