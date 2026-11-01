@@ -1,8 +1,13 @@
 # 👻 Unhaunt
 
-**Find the forgotten accounts haunting your inbox. Lay them to rest only when your phone says yes.**
+**Find the forgotten accounts haunting your inbox, and lay them to rest only after you sign in again to approve each one.**
 
-Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 4: *Ghost in the Machine*. Work in progress.
+Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 4: *Ghost in the Machine*. Write-up: [Unhaunt on DEV](https://dev.to/kourtneylee1611/unhaunt-215-ghost-accounts-in-my-inbox-and-my-local-ai-wanted-to-delete-23-i-still-use-6ee).
+
+[![Unhaunt demo video (81 s)](https://img.youtube.com/vi/J3ZVbad1G7A/maxresdefault.jpg)](https://youtu.be/J3ZVbad1G7A)
+*81-second demo on my real inbox, redacted. Click to watch on YouTube.*
+
+![Unhaunt architecture: Gmail headers through Token Vault, local Gemma, your labels, Ultramarine and a quote check, then a fresh Auth0 sign-in before one Gmail send](docs/media/architecture.png)
 
 ## What it does
 1. **Census.** Reads only the *headers* of your Gmail signup and welcome emails (through Auth0 Token Vault) and groups them into the services you have accounts with.
